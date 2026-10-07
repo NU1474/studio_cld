@@ -1,0 +1,156 @@
+<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><title>v3D studio</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+:root{--bg:#eef0f3;--sc:#e3e7ec;--fg:#111827;--pn:rgba(255,255,255,.93);--bd:#c5ccd5;--ac:#2563eb;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1318;--sc:#161b22;--fg:#e5e7eb;--pn:rgba(22,27,34,.93);--bd:#2f3742}}
+:root[data-theme="dark"]{--bg:#0f1318;--sc:#161b22;--fg:#e5e7eb;--pn:rgba(22,27,34,.93);--bd:#2f3742}
+html,body{height:100%;margin:0}body{background:var(--bg);color:var(--fg);font:13px system-ui,"Hiragino Sans","Noto Sans JP",sans-serif;overflow:hidden}
+canvas{position:fixed;inset:0;width:100%;height:100%;touch-action:none;display:block}
+.pn{position:fixed;background:var(--pn);border:1px solid var(--bd);border-radius:10px;backdrop-filter:blur(6px)}
+#panel{left:8px;top:calc(8px + env(safe-area-inset-top,0px));bottom:calc(92px + env(safe-area-inset-bottom,0px));width:272px;overflow:auto;padding:8px}
+#panel.hide{display:none}
+h1{font-size:16px;margin:0 0 6px}h4{margin:0;font-size:13px}
+details{border-top:1px solid var(--bd);padding:5px 0}summary{cursor:pointer;display:flex;align-items:center;gap:6px;font-weight:600}
+label{display:flex;justify-content:space-between;align-items:center;gap:6px;margin:3px 0;font-size:12px}
+input[type=number],select{width:92px;background:var(--bg);color:var(--fg);border:1px solid var(--bd);border-radius:5px;padding:3px}select{width:150px}
+input[type=color]{width:30px;height:20px;padding:0;border:1px solid var(--bd);background:none;margin-left:auto}
+button{background:var(--bg);color:var(--fg);border:1px solid var(--bd);border-radius:7px;padding:6px 9px;font-size:12px;cursor:pointer}button:hover{border-color:var(--ac)}
+button.p{background:var(--ac);color:#fff;border-color:var(--ac)}
+#bar{right:8px;top:calc(8px + env(safe-area-inset-top,0px));display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end;max-width:62vw;padding:5px}
+#leg{right:8px;top:calc(60px + env(safe-area-inset-top,0px));padding:8px 10px;font-size:12px}
+#leg div{display:flex;align-items:center;gap:6px;margin:3px 0}#leg i{width:12px;height:12px;border-radius:3px;border:1px solid #0004}
+#st{left:50%;transform:translateX(-50%);bottom:calc(8px + env(safe-area-inset-bottom,0px));display:flex;gap:14px;padding:8px 14px;max-width:96vw;flex-wrap:wrap;justify-content:center}
+#st div{text-align:center}#st small{display:block;color:inherit;opacity:.7;font-size:11px}#st b{font-size:17px}
+#tg{display:none;left:8px;bottom:calc(100px + env(safe-area-inset-bottom,0px));z-index:3}
+#hint{font-size:11px;opacity:.75;margin:4px 0}
+#md{inset:0;background:#0007;display:none;align-items:center;justify-content:center;z-index:9;border-radius:0}
+#md .bx{background:var(--bg);border:1px solid var(--bd);border-radius:12px;padding:14px;width:min(560px,92vw)}
+#md textarea{width:100%;height:240px;box-sizing:border-box;background:var(--sc);color:var(--fg);border:1px solid var(--bd);border-radius:6px;font:11px monospace}
+#ts{left:50%;top:70px;transform:translateX(-50%);padding:6px 12px;display:none;z-index:9}
+#report{display:none}
+@media(max-width:760px){#tg{display:block}#panel{width:min(272px,72vw)}#bar{max-width:58vw}}
+@media print{body.pr>*:not(#report){display:none!important}body.pr{overflow:visible;background:#fff;color:#000}body.pr #report{display:block;padding:12mm}#report img{max-width:100%}#report table{border-collapse:collapse;width:100%;margin:8px 0}#report td{border:1px solid #888;padding:3px 6px}}
+</style></head><body>
+<canvas id="cv"></canvas>
+<button id="tg" class="pn">☰ 設定</button>
+<div id="panel" class="pn"><h1>v3D studio</h1>
+<div style="display:flex;gap:4px;flex-wrap:wrap"><button id="auto">自動配置</button><button id="rot">選択を90°回転</button><button id="rest">復元</button></div>
+<div id="hint">各機器を長押し(約0.5秒)→ドラッグで移動／ホイール・Rキーで回転。右(+X)側がフロント(F)。</div><div id="sel" style="font-size:12px;margin-bottom:4px">選択: なし</div><div id="form"></div></div>
+<div id="bar" class="pn"><button id="bpdf">PDF出力</button><button id="bcode">コード生成</button><button id="bdl">ダウンロード</button><button id="bsh">共有</button><button id="bsv" class="p">一時保存</button></div>
+<div id="leg" class="pn"></div>
+<div id="st" class="pn"></div>
+<div id="md" class="pn"><div class="bx"><h3 id="mt" style="margin:0 0 8px"></h3><div id="mb"></div><div id="mf" style="display:flex;gap:6px;justify-content:flex-end;margin-top:10px"></div></div></div>
+<div id="ts" class="pn"></div><div id="report"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const $=s=>document.querySelector(s),K=0.001;
+const CT={'10ft':[2991,2438,2591],'12ft':[3658,2438,2591],'20ft':[6058,2438,2591],'40ft':[12192,2438,2591]};
+const D={ct:'20ft',tr:85,fh:300,pipe:2500,cl:174,cw:72,ch:204,ah:280,v:3.2,cpp:52,pkw:300,ppr:8,rkw:200,rrows:2,rcols:3,rgap:100,
+pcsw:1000,pcsd:800,pcsh:2000,pcsk:900,invw:800,invd:600,invh:1800,invk:500,hvw:1000,hvd:600,hvh:900,hvk:150,nvw:600,nvd:600,nvh:1200,nvk:80,
+c_cell:'#2563eb',c_pcs:'#facc15',c_inv:'#f97316',c_hvac:'#22d3ee',c_novec:'#ef4444',c_shell:'#9ca3af',c_fnd:'#4b5563',pos:{},auto:1};
+let S=JSON.parse(JSON.stringify(D));
+try{const h=location.hash;if(h.startsWith('#d='))Object.assign(S,JSON.parse(decodeURIComponent(escape(atob(h.slice(3))))));else{const s=localStorage.getItem('v3d_cur');if(s)Object.assign(S,JSON.parse(s))}}catch(e){}
+const save=()=>{try{localStorage.setItem('v3d_cur',JSON.stringify(S))}catch(e){}};
+/* ---------- form ---------- */
+const n=(k,l,u)=>`<label>${l}${u?' ('+u+')':''}<input type="number" data-k="${k}" step="any" min="0"></label>`;
+const col=k=>`<input type="color" data-k="${k}">`;
+const sec=(t,c,body,o)=>`<details ${o?'open':''}><summary>${t}${c?col(c):''}</summary>${body}</details>`;
+const eq=p=>n(p+'w','幅','mm')+n(p+'d','奥行','mm')+n(p+'h','高さ','mm')+n(p+'k','重量','kg');
+$('#form').innerHTML=
+sec('コンテナ・外装・基礎','c_shell',`<label>サイズ<select data-k="ct">${Object.entries(CT).map(([k,v])=>`<option value="${k}">${k} (${v.join('×')}mm)</option>`).join('')}</select></label>`+n('tr','外装透明度','%')+`<label>基礎(濃グレー)色${col('c_fnd')}</label>`+n('fh','基礎高さ','mm')+n('pipe','筐体・配管重量','kg'),1)+
+sec('1 バッテリー(ラック/パック)','c_cell',n('cl','セル 縦','mm')+n('cw','セル 横','mm')+n('ch','セル 高さ','mm')+n('ah','セル容量','Ah')+n('v','公称電圧','V')+n('cpp','1パック内セル数')+n('pkw','1パック重量','kg')+n('ppr','1ラック内パック数')+n('rkw','ラック枠重量','kg')+n('rrows','ラック配置 縦(段=X方向)')+n('rcols','ラック配置 横(列=Z方向)')+n('rgap','ラック間隔','mm'),1)+
+sec('2 PCS','c_pcs',eq('pcs'))+sec('3 インバータ','c_inv',eq('inv'))+sec('4 HVAC (水冷)','c_hvac',eq('hv'))+sec('5 NOVEC (消火設備)','c_novec',eq('nv'));
+function sync(){document.querySelectorAll('[data-k]').forEach(i=>i.value=S[i.dataset.k])}
+const STRUCT=['ct','rrows','rcols','cpp','ppr','cl','cw','ch','rgap'];
+$('#form').addEventListener('input',e=>{const t=e.target,k=t.dataset.k;if(!k)return;if(t.type=='number'){if(t.value==='')return;S[k]=Math.max(0,+t.value)}else S[k]=t.value;if(STRUCT.includes(k))S.auto=1;if(k=='ct')fit();rebuild();save()});
+/* ---------- three ---------- */
+const R=new THREE.WebGLRenderer({canvas:$('#cv'),antialias:true,preserveDrawingBuffer:true});R.setPixelRatio(Math.min(devicePixelRatio,2));
+const sc=new THREE.Scene(),cam=new THREE.PerspectiveCamera(45,1,.1,200),root=new THREE.Group();sc.add(root);
+sc.add(new THREE.HemisphereLight(0xffffff,0x667788,.75));const dl=new THREE.DirectionalLight(0xffffff,.7);dl.position.set(6,10,5);sc.add(dl);
+const bg=()=>R.setClearColor(getComputedStyle(document.documentElement).getPropertyValue('--sc').trim()||'#e3e7ec');bg();matchMedia('(prefers-color-scheme:dark)').addEventListener('change',bg);
+let th=.8,ph=1.1,dist=12;const T=new THREE.Vector3(0,1.2,0);
+function fit(){dist=CT[S.ct][0]*K*1.1+4}
+function camUpd(){cam.position.set(T.x+dist*Math.sin(ph)*Math.sin(th),T.y+dist*Math.cos(ph),T.z+dist*Math.sin(ph)*Math.cos(th));cam.lookAt(T)}
+function resize(){const w=innerWidth,h=innerHeight;R.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix()}addEventListener('resize',resize);
+fit();resize();
+(function loop(){camUpd();R.render(sc,cam);requestAnimationFrame(loop)})();
+function clr(g){while(g.children.length){const c=g.children[0];g.remove(c);c.traverse(o=>{o.geometry&&o.geometry.dispose();o.material&&o.material.dispose&&o.material.dispose()})}}
+function bx(p,w,h,d,c,x,y,z){const m=new THREE.Mesh(new THREE.BoxGeometry(w*K,h*K,d*K),new THREE.MeshLambertMaterial({color:c}));m.position.set(x*K,y*K,z*K);m.add(new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry),new THREE.LineBasicMaterial({color:0x000000,transparent:true,opacity:.35})));p.add(m);return m}
+/* ---------- model ---------- */
+function items(){const a=[],nx=Math.ceil(Math.sqrt(S.cpp)),ny=Math.ceil(S.cpp/nx),px=S.cl*ny*1.04,pz=S.cw*nx*1.04,ph=S.ch+30,rw=px+60,rd=pz+60,rh=S.ppr*ph+120;
+for(let i=0;i<Math.floor(S.rrows)*Math.floor(S.rcols);i++)a.push({id:'rk'+i,n:'Battery Rack '+(i+1),t:'rack',w:rw,d:rd,h:rh,kg:S.rkw+S.ppr*S.pkw,c:S.c_cell,px,pz,ph});
+[['pcs','PCS','c_pcs'],['inv','Inverter','c_inv'],['hv','HVAC','c_hvac'],['nv','NOVEC','c_novec']].forEach(([p,nm,c])=>a.push({id:p,n:nm,t:'eq',w:S[p+'w'],d:S[p+'d'],h:S[p+'h'],kg:S[p+'k'],c:S[c]}));return a}
+function layout(its){const[L,W]=CT[S.ct],x0=-L/2+100,z0=-W/2+100,gap=S.rgap,rk=its.filter(i=>i.t=='rack'),r0=rk[0];S.pos={};
+rk.forEach((it,i)=>{const r=Math.floor(i/S.rcols),c=i%S.rcols;S.pos[it.id]={x:x0+r*(r0.w+gap)+r0.w/2,z:z0+c*(r0.d+gap)+r0.d/2,a:0}});
+let cx=r0?x0+S.rrows*(r0.w+gap)+300:x0,z=z0,mw=0;
+its.filter(i=>i.t=='eq').forEach(it=>{if(z>z0&&z+it.d>W/2-100){cx+=mw+100;z=z0;mw=0}S.pos[it.id]={x:cx+it.w/2,z:z+it.d/2,a:0};z+=it.d+100;mw=Math.max(mw,it.w)});S.auto=0}
+let drag=[],cur=[],sel=null;
+function rebuild(){cur=items();if(S.auto||cur.some(i=>!S.pos[i.id]))layout(cur);clr(root);drag=[];const[L,W,H]=CT[S.ct],fh=S.fh;
+const sh=bx(root,L,H,W,S.c_shell,0,fh+H/2,0);sh.material.transparent=true;sh.material.opacity=Math.min(1,Math.max(0,1-S.tr/100));sh.material.depthWrite=false;sh.material.side=THREE.DoubleSide;sh.children[0].material.opacity=.7;sh.children[0].material.color.set(S.c_shell).multiplyScalar(.5);
+if(fh>0)bx(root,L,fh,W,S.c_fnd,0,fh/2,0);
+const g0=new THREE.GridHelper(L*K+6,Math.round(L*K+6),0x888888,0xaaaaaa);g0.material.transparent=true;g0.material.opacity=.3;g0.position.y=-.01;root.add(g0);
+const cone=new THREE.Mesh(new THREE.ConeGeometry(.25,.5,3),new THREE.MeshBasicMaterial({color:0x16a34a}));cone.rotation.z=-Math.PI/2;cone.position.set(L*K/2+.5,.2,0);root.add(cone);
+cur.forEach(it=>{const g=new THREE.Group(),p=S.pos[it.id];g.userData={id:it.id};
+if(it.t=='rack'){const f=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(it.w*K,it.h*K,it.d*K)),new THREE.LineBasicMaterial({color:0x333333}));f.position.y=it.h*K/2;g.add(f);
+for(let i=0;i<S.ppr;i++){const m=bx(g,it.px,S.ch,it.pz,it.c,0,60+it.ph*i+it.ph/2,0);m.material.color.offsetHSL(0,0,i%2?-.05:.05)}}
+else bx(g,it.w,it.h,it.d,it.c,0,it.h/2,0);
+g.position.set(p.x*K,fh*K,p.z*K);g.rotation.y=p.a||0;root.add(g);drag.push(g)});
+if(sel&&!cur.some(i=>i.id==sel.userData.id))sel=null;select(drag.find(g=>sel&&g.userData.id==sel.userData.id)||null);stats()}
+function select(g){sel=g;drag.forEach(o=>o.traverse(m=>{if(m.material&&m.material.emissive)m.material.emissive.setHex(o===g?0x444444:0)}));const it=g&&cur.find(i=>i.id==g.userData.id);$('#sel').textContent='選択: '+(it?it.n:'なし')}
+/* ---------- stats ---------- */
+function calc(){const[L,W,H]=CT[S.ct],nr=cur.filter(i=>i.t=='rack').length;let kg=S.pipe,mx=0;const bs=[];let ov=false;
+cur.forEach(it=>{const p=S.pos[it.id],c=Math.abs(Math.cos(p.a||0)),s=Math.abs(Math.sin(p.a||0)),ex=c*it.w/2+s*it.d/2,ez=s*it.w/2+c*it.d/2;bs.push({x0:p.x-ex,x1:p.x+ex,z0:p.z-ez,z1:p.z+ez});kg+=it.kg;mx+=it.kg*p.x;if(it.h>H-100)ov=true});
+const iL=L/2-50,iW=W/2-50;let mn=Infinity;
+bs.forEach((a,i)=>{if(a.x0<-iL||a.x1>iL||a.z0<-iW||a.z1>iW)ov=true;[a.x0+iL,iL-a.x1,a.z0+iW,iW-a.z1].forEach(g=>{if(g>=30)mn=Math.min(mn,g)});
+for(let j=i+1;j<bs.length;j++){const b=bs[j],g=Math.max(a.x0-b.x1,b.x0-a.x1,a.z0-b.z1,b.z0-a.z1);if(g<0)ov=true;else if(g>=30)mn=Math.min(mn,g)}});
+const F=kg?kg*((mx/kg)+L/2)/L/1000:0,t=kg/1000;
+return{mwh:nr*S.ppr*S.cpp*S.ah*S.v/1e6,t,F,Rr:t-F,mn:isFinite(mn)?Math.round(mn):null,ov,nr}}
+function stats(){const c=calc();$('#st').innerHTML=`<div><small>総定格蓄電容量 (MWh)</small><b>${c.mwh.toFixed(3)}</b></div><div><small>システム総重量 (t)</small><b>${c.t.toFixed(2)}</b></div><div><small>推定軸重バランス F/R (t)</small><b>${c.F.toFixed(2)} / ${c.Rr.toFixed(2)}</b></div><div><small>通路クリアランス (mm)</small><b style="color:${c.ov?'#dc2626':'inherit'}">${c.mn??'–'}${c.ov?' ⚠干渉/はみ出し':''}</b></div>`;return c}
+const LEG=[['Battery Rack (LFP Pack)','c_cell'],['Liquid Cooling HVAC','c_hvac'],['PCS / Power Inverter','c_pcs'],['DC/AC Protection Panel','c_inv'],['Fire Suppression (Novec)','c_novec']];
+const legUpd=()=>$('#leg').innerHTML=LEG.map(([t,c])=>`<div><i style="background:${S[c]}"></i>${t}</div>`).join('');
+$('#form').addEventListener('input',legUpd);
+/* ---------- interaction ---------- */
+const cv=R.domElement,ray=new THREE.Raycaster(),mv=new THREE.Vector2(),pl=new THREE.Plane(new THREE.Vector3(0,1,0),0),pt=new Map();
+let grab=null,off={x:0,z:0},lp=null,dn=null,pd=0;
+function setRay(e){const r=cv.getBoundingClientRect();mv.set((e.clientX-r.left)/r.width*2-1,-((e.clientY-r.top)/r.height)*2+1);ray.setFromCamera(mv,cam)}
+function pick(e){setRay(e);const h=ray.intersectObjects(drag,true)[0];if(!h)return null;let o=h.object;while(o&&!o.userData.id)o=o.parent;return o}
+function fl(e){setRay(e);pl.constant=-S.fh*K;const v=new THREE.Vector3();return ray.ray.intersectPlane(pl,v)}
+cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);pt.set(e.pointerId,{x:e.clientX,y:e.clientY});
+if(pt.size==2){clearTimeout(lp);dn=null;const[a,b]=[...pt.values()];pd=Math.hypot(a.x-b.x,a.y-b.y);return}
+const g=pick(e);dn={x:e.clientX,y:e.clientY,g,mv:false};
+if(g)lp=setTimeout(()=>{const p=fl(e);if(!p)return;grab=g;select(g);off={x:g.position.x-p.x,z:g.position.z-p.z};cv.style.cursor='grabbing';navigator.vibrate&&navigator.vibrate(30)},450)});
+cv.addEventListener('pointermove',e=>{const o=pt.get(e.pointerId);if(!o)return;const dx=e.clientX-o.x,dy=e.clientY-o.y;o.x=e.clientX;o.y=e.clientY;
+if(pt.size==2){const[a,b]=[...pt.values()],d=Math.hypot(a.x-b.x,a.y-b.y);if(pd)dist=Math.min(60,Math.max(2,dist*pd/d));pd=d;return}
+if(grab){const p=fl(e);if(!p)return;const x=Math.round((p.x+off.x)/(K*10))*10,z=Math.round((p.z+off.z)/(K*10))*10;grab.position.x=x*K;grab.position.z=z*K;const s=S.pos[grab.userData.id];s.x=x;s.z=z;stats();return}
+if(!dn)return;if(!dn.mv&&Math.hypot(e.clientX-dn.x,e.clientY-dn.y)>8){dn.mv=true;clearTimeout(lp)}
+if(dn.mv){th-=dx*.006;ph=Math.min(1.5,Math.max(.1,ph-dy*.006))}});
+const up=e=>{clearTimeout(lp);pt.delete(e.pointerId);cv.style.cursor='';if(grab){grab=null;save();stats()}else if(dn&&!dn.mv&&pt.size==0)select(dn.g);if(pt.size<2)pd=0;if(!pt.size)dn=null};
+cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
+function rotate(a){const g=grab||sel;if(!g)return;g.rotation.y+=a;S.pos[g.userData.id].a=g.rotation.y;save();stats()}
+cv.addEventListener('wheel',e=>{e.preventDefault();if(grab)rotate(Math.sign(e.deltaY)*Math.PI/12);else dist=Math.min(60,Math.max(2,dist*Math.exp(e.deltaY*.001)))},{passive:false});
+addEventListener('keydown',e=>{if(e.key=='r'&&!/INPUT|SELECT/.test(document.activeElement.tagName))rotate(Math.PI/2)});
+$('#rot').onclick=()=>rotate(Math.PI/2);$('#auto').onclick=()=>{S.auto=1;rebuild();save()};$('#tg').onclick=()=>$('#panel').classList.toggle('hide');
+/* ---------- output ---------- */
+function toast(t){const e=$('#ts');e.textContent=t;e.style.display='block';setTimeout(()=>e.style.display='none',1800)}
+function modal(t,body,acts){$('#mt').textContent=t;$('#mb').innerHTML=body;const f=$('#mf');f.innerHTML='';[...(acts||[]),['閉じる',()=>{}]].forEach(([l,fn],i,a)=>{const b=document.createElement('button');b.textContent=l;if(i==0&&a.length>1)b.className='p';b.onclick=()=>{if(fn()!==false)$('#md').style.display='none'};f.appendChild(b)});$('#md').style.display='flex'}
+const copy=(id)=>()=>{const t=$(id);t.select();try{navigator.clipboard.writeText(t.value);toast('コピーしました')}catch(e){document.execCommand&&document.execCommand('copy')}return false};
+const cfg=()=>{const c=calc();return JSON.stringify({app:'v3D studio',container:S.ct,size_mm:CT[S.ct],summary:{MWh:+c.mwh.toFixed(3),total_t:+c.t.toFixed(2),axle_F_t:+c.F.toFixed(2),axle_R_t:+c.Rr.toFixed(2),clearance_mm:c.mn},params:Object.fromEntries(Object.entries(S).filter(([k])=>k!='pos'&&k!='auto')),layout:cur.map(i=>({id:i.id,name:i.n,w:Math.round(i.w),d:Math.round(i.d),h:Math.round(i.h),kg:i.kg,x:Math.round(S.pos[i.id].x),z:Math.round(S.pos[i.id].z),angle_deg:Math.round((S.pos[i.id].a||0)*180/Math.PI)}))},null,2)};
+$('#bcode').onclick=()=>modal('コード生成 (設計データ JS)',`<textarea id="cc" readonly></textarea>`,[['コピー',copy('#cc')]]),$('#cc')&&0;
+$('#bcode').onclick=()=>{modal('コード生成 (設計データ JS)',`<textarea id="cc" readonly></textarea>`,[['コピー',copy('#cc')]]);$('#cc').value='const V3D_CONFIG = '+cfg()+';'};
+$('#bdl').onclick=async()=>{const data=cfg();try{const d=await claude.use('downloads');if(d){await d.save({filename:'v3d_studio_design.json',data});return}}catch(e){if(e&&e.code=='cancelled')return}
+try{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type:'application/json'}));a.download='v3d_studio_design.json';a.click()}catch(e){}
+modal('ダウンロード',`<textarea id="cc" readonly></textarea>`,[['コピー',copy('#cc')]]);$('#cc').value=data};
+$('#bsh').onclick=async()=>{const u=location.href.split('#')[0]+'#d='+btoa(unescape(encodeURIComponent(JSON.stringify(S))));
+try{if(navigator.share){await navigator.share({title:'v3D studio',url:u});return}}catch(e){if(e&&e.name=='AbortError')return}
+modal('共有リンク',`<textarea id="cc" readonly style="height:120px"></textarea>`,[['コピー',copy('#cc')]]);$('#cc').value=u};
+$('#bsv').onclick=()=>{try{localStorage.setItem('v3d_tmp',JSON.stringify(S));toast('一時保存しました')}catch(e){toast('保存できません')}};
+$('#rest').onclick=()=>{try{const s=localStorage.getItem('v3d_tmp');if(!s)return toast('一時保存がありません');S=Object.assign(JSON.parse(JSON.stringify(D)),JSON.parse(s));sync();fit();legUpd();rebuild();save();toast('復元しました')}catch(e){}};
+$('#bpdf').onclick=()=>modal('PDF出力 内容選択',`<label><span>3Dモデル画像</span><input type="checkbox" id="p1" checked></label><label><span>入力仕様</span><input type="checkbox" id="p2" checked></label><label><span>容量・重量サマリ・配置</span><input type="checkbox" id="p3" checked></label><div style="font-size:11px;opacity:.7">印刷ダイアログで「PDFに保存」を選択してください。</div>`,[['出力',()=>{const o=[$('#p1').checked,$('#p2').checked,$('#p3').checked];setTimeout(()=>pdf(o),50)}]]);
+function tb(rows){return'<table>'+rows.map(r=>'<tr>'+r.map(c=>`<td>${c}</td>`).join('')+'</tr>').join('')+'</table>'}
+function pdf([a,b,c]){const k=calc();R.render(sc,cam);let h=`<h2>v3D studio 設計レポート</h2><p>${new Date().toLocaleString('ja-JP')} / コンテナ ${S.ct} (${CT[S.ct].join('×')}mm)</p>`;
+if(a)h+=`<img src="${cv.toDataURL('image/png')}">`;
+if(c)h+='<h3>サマリ</h3>'+tb([['総定格蓄電容量',k.mwh.toFixed(3)+' MWh'],['システム総重量',k.t.toFixed(2)+' t'],['軸重 F/R',k.F.toFixed(2)+' / '+k.Rr.toFixed(2)+' t'],['通路クリアランス',(k.mn??'–')+' mm'],['ラック数',k.nr]])+'<h3>配置</h3>'+tb([['名称','W×D×H(mm)','重量(kg)','X','Z','角度']].concat(cur.map(i=>[i.n,[i.w,i.d,i.h].map(Math.round).join('×'),i.kg,Math.round(S.pos[i.id].x),Math.round(S.pos[i.id].z),Math.round((S.pos[i.id].a||0)*180/Math.PI)+'°'])));
+if(b)h+='<h3>入力仕様</h3>'+tb(Object.entries(S).filter(([x])=>x!='pos'&&x!='auto').map(([x,y])=>[x,y]));
+$('#report').innerHTML=h;document.body.classList.add('pr');const done=()=>{document.body.classList.remove('pr');removeEventListener('afterprint',done)};addEventListener('afterprint',done);try{window.print()}catch(e){done();toast('印刷できません')}}
+sync();legUpd();rebuild();
+</script></body></html>
